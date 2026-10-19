@@ -1,4 +1,4 @@
-"""Line-oriented JSON bridge between TapoCam.app and pytapo.
+"""Line-oriented JSON bridge between the desktop apps (macOS, Windows) and pytapo.
 
 Reads one request per line on stdin:  {"id": 1, "cmd": "move", "args": {"x": 10, "y": 0}}
 Writes one reply per line on stdout:  {"id": 1, "ok": true, "result": ...}

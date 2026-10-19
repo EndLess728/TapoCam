@@ -1,0 +1,203 @@
+name: Build
+
+# Builds every app in the monorepo:
+#   macOS       apps/macos    universal .app → DMG + ZIP
+#   Android TV  apps/android  release APK (installable, signed with the debug key)
+#   Windows     apps/windows  self-contained x64 build → installer + portable ZIP
+# Pushing a v* tag also publishes a GitHub Release with all of them attached and a changelog.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BUILD_NUMBER: ${{ github.run_number }}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+  macos:
+    needs: version
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/macos
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal app
+        run: UNIVERSAL=1 ./build-app.sh
+
+      - name: Package DMG and ZIP
+        run: |
+          mkdir -p out dmg
+          cp -R dist/TapoCam.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "TapoCam" -srcfolder dmg -ov -format UDZO "out/TapoCam-$VERSION-macOS.dmg"
+          ditto -c -k --keepParent dist/TapoCam.app "out/TapoCam-$VERSION-macOS.zip"
+          lipo -info dist/TapoCam.app/Contents/MacOS/TapoCam
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: apps/macos/out/*
+
+  android-tv:
+    needs: version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk "out/TapoCam-$VERSION-android-tv.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-tv
+          path: apps/android/out/*
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: apps/windows
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # Must match build.ps1's embedded Python (3.12) so pip picks the right wheels.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Inno Setup
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build app and installer
+        run: ./build.ps1 -Version $env:VERSION -Installer
+
+      - name: Package portable ZIP
+        run: Compress-Archive -Path dist\TapoCam -DestinationPath "out\TapoCam-$env:VERSION-windows-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: apps/windows/out/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, macos, android-tv, windows]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history and tags, for the changelog
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      # Changelog = commits since the previous tag, grouped by Conventional Commit type.
+      - name: Write release notes
+        run: |
+          PREV=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          RANGE=${PREV:+$PREV..}$GITHUB_REF_NAME
+          section() {  # section <title> <grep -E pattern on the subject>
+            local lines
+            lines=$(git log --no-merges --pretty='%s (%h)' "$RANGE" | grep -E "$2" || true)
+            [[ -z "$lines" ]] && return
+            echo "### $1"
+            echo
+            sed -E 's/^[a-z]+(\([^)]*\))?!?: */- /' <<< "$lines"
+            echo
+          }
+          {
+            echo "## Download"
+            echo
+            echo "| Platform | File | How to install |"
+            echo "|---|---|---|"
+            echo "| Windows 10/11 (x64) | \`TapoCam-$VERSION-windows-setup.exe\` | Run the installer (per-user, no admin needed) |"
+            echo "| Windows, portable | \`TapoCam-$VERSION-windows-x64.zip\` | Unzip anywhere and run \`TapoCam.exe\` |"
+            echo "| macOS 14+ | \`TapoCam-$VERSION-macOS.dmg\` | Open it and drag **TapoCam** to Applications |"
+            echo "| Android TV 6+ | \`TapoCam-$VERSION-android-tv.apk\` | Sideload with \`adb install\` or a file manager on the TV |"
+            echo
+            echo "## First launch"
+            echo
+            echo "- **All platforms**: create a **Camera Account** in the Tapo app (Camera → ⚙ → Advanced Settings → Camera Account) and enter it in TapoCam's settings."
+            echo "- **Windows**: SmartScreen may warn because the app isn't code-signed. Click **More info → Run anyway**. ffmpeg and Python are bundled."
+            echo "- **macOS**: the app isn't notarized. Open it once, then **System Settings → Privacy & Security → Open Anyway**. Needs \`brew install ffmpeg python\`."
+            echo
+            echo "See the [README](https://github.com/$GITHUB_REPOSITORY#install) for details."
+            echo
+            echo "## Changes"
+            echo
+            section "Features" '^feat(\(|:|!)'
+            section "Fixes" '^fix(\(|:|!)'
+            section "Other" '^(chore|ci|docs|refactor|perf|build|style|test)(\(|:|!)'
+            OTHER=$(git log --no-merges --pretty='- %s (%h)' "$RANGE" | grep -vE '^- (feat|fix|chore|ci|docs|refactor|perf|build|style|test)(\(|:|!)' || true)
+            if [[ -n "$OTHER" ]]; then echo "### Misc"; echo; echo "$OTHER"; echo; fi
+            if [[ -n "$PREV" ]]; then
+              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$PREV...$GITHUB_REF_NAME"
+            else
+              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME"
+            fi
+          } > notes.md
+          cat notes.md
+          ls -la out
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --title "TapoCam $VERSION" \
+            --notes-file notes.md

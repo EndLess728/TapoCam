@@ -1,0 +1,286 @@
+<Window x:Class="TapoCam.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TapoCam" Width="1180" Height="700" MinWidth="900" MinHeight="540"
+        Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        Icon="Assets/TapoCam.ico" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,6">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="Gray" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="StatusText" Foreground="{StaticResource Secondary}" Text="Not configured"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Border Background="{StaticResource Field}" CornerRadius="7" Margin="0,0,8,0" ToolTip="HD = main stream, SD = lower bandwidth">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="HdButton" Style="{StaticResource Segment}" Content="HD" GroupName="Quality" Click="Quality_Click"/>
+                            <RadioButton x:Name="SdButton" Style="{StaticResource Segment}" Content="SD" GroupName="Quality" Click="Quality_Click"/>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource ToolButton}" Click="Snapshot_Click" ToolTip="Save a snapshot to Pictures\TapoCam (Ctrl+Shift+S)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE722;"/>
+                            <TextBlock Text="Snapshot" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="RecordButton" Style="{StaticResource ToolButton}" Click="Record_Click" ToolTip="Record to Videos\TapoCam (Ctrl+Shift+R)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="RecordIcon" Style="{StaticResource Icon}" Text="&#xE7C8;"/>
+                            <TextBlock x:Name="RecordLabel" Text="Record" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolButton}" Click="Reconnect_Click" ToolTip="Reconnect (Ctrl+R)">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE72C;"/>
+                    </Button>
+                    <Button Style="{StaticResource ToolButton}" Click="Settings_Click" ToolTip="Camera settings (Ctrl+,)">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE713;"/>
+                    </Button>
+                    <Button Style="{StaticResource ToolButton}" Click="ToggleSidebar_Click" ToolTip="Show or hide controls">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE90D;"/>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition x:Name="SidebarColumn" Width="290"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Video -->
+            <Grid Background="Black" x:Name="VideoPane" Focusable="True" FocusVisualStyle="{x:Null}" MouseDown="VideoPane_MouseDown">
+                <Image Source="{Binding Player.Frame}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                <StackPanel x:Name="ConnectingOverlay" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <ProgressBar IsIndeterminate="True" Width="180" Height="4" Foreground="{StaticResource Accent}" Background="#33FFFFFF" BorderThickness="0"/>
+                    <TextBlock x:Name="ConnectingText" Foreground="#CCFFFFFF" Margin="0,12,0,0" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <Border x:Name="FailedOverlay" Background="{StaticResource Overlay}" CornerRadius="14" Padding="24" MaxWidth="460"
+                        VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" FontSize="36" HorizontalAlignment="Center" Foreground="White"/>
+                        <TextBlock x:Name="FailedText" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Settings…" Click="Settings_Click" Margin="0,0,8,0"/>
+                            <Button Content="Retry now" Style="{StaticResource AccentButton}" Click="Reconnect_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel x:Name="IdleOverlay" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Style="{StaticResource Icon}" Text="&#xE8B8;" FontSize="44" HorizontalAlignment="Center" Foreground="White"/>
+                    <TextBlock Text="Set up your Tapo camera to start watching." Foreground="White" Margin="0,12"/>
+                    <Button Content="Set Up Camera…" Style="{StaticResource AccentButton}" HorizontalAlignment="Center" Click="Settings_Click"/>
+                </StackPanel>
+
+                <Border x:Name="RecordingPill" Background="{StaticResource Overlay}" CornerRadius="12" Padding="10,4" Margin="12"
+                        HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="10" Height="10" Fill="{StaticResource Danger}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="RecordingTime" Foreground="White" FontFamily="Consolas"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="PrivacyPill" Background="{StaticResource Overlay}" CornerRadius="12" Padding="10,4" Margin="12"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xED1A;" Foreground="White" Margin="0,0,6,0"/>
+                        <TextBlock Text="Privacy mode" Foreground="White"/>
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="ToastBorder" Background="#E623262B" CornerRadius="16" Padding="14,8" Margin="12"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Visibility="Collapsed">
+                    <TextBlock x:Name="ToastText"/>
+                </Border>
+            </Grid>
+
+            <!-- Controls sidebar -->
+            <Border x:Name="Sidebar" Grid.Column="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+
+                        <!-- Connection banner -->
+                        <Border x:Name="BusyBanner" Background="{StaticResource Field}" CornerRadius="8" Padding="10" Margin="0,0,0,18" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock x:Name="BusyText" TextWrapping="Wrap"/>
+                                <ProgressBar IsIndeterminate="True" Height="3" Margin="0,8,0,0" Foreground="{StaticResource Accent}" Background="Transparent" BorderThickness="0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="FailBanner" Background="#1FF5A524" CornerRadius="8" Padding="10" Margin="0,0,0,18" Visibility="Collapsed">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" Foreground="{StaticResource Warning}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Controls unavailable" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                                <TextBlock x:Name="FailText" TextWrapping="Wrap" Margin="0,6"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Settings…" Click="Settings_Click" Margin="0,0,8,0"/>
+                                    <Button Content="Retry" Click="RetryControls_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="LastErrorText" Foreground="{StaticResource Danger}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12" Visibility="Collapsed"/>
+
+                        <!-- Pan & tilt -->
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="PAN &amp; TILT"/>
+                        <Grid HorizontalAlignment="Center" Margin="0,2,0,10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="52"/>
+                                <RowDefinition Height="52"/>
+                                <RowDefinition Height="52"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="52"/>
+                                <ColumnDefinition Width="52"/>
+                                <ColumnDefinition Width="52"/>
+                            </Grid.ColumnDefinitions>
+                            <RepeatButton Grid.Column="1" Margin="2" Delay="350" Interval="400" Tag="up" Click="Pad_Click">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE70E;" FontSize="18"/>
+                            </RepeatButton>
+                            <RepeatButton Grid.Row="1" Margin="2" Delay="350" Interval="400" Tag="left" Click="Pad_Click">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE76B;" FontSize="18"/>
+                            </RepeatButton>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Icon}" Text="&#xE714;" FontSize="20"
+                                       HorizontalAlignment="Center" Foreground="{StaticResource Secondary}"/>
+                            <RepeatButton Grid.Row="1" Grid.Column="2" Margin="2" Delay="350" Interval="400" Tag="right" Click="Pad_Click">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE76C;" FontSize="18"/>
+                            </RepeatButton>
+                            <RepeatButton Grid.Row="2" Grid.Column="1" Margin="2" Delay="350" Interval="400" Tag="down" Click="Pad_Click">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="18"/>
+                            </RepeatButton>
+                        </Grid>
+                        <DockPanel Margin="0,0,0,6">
+                            <TextBlock Text="Step" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock x:Name="StepText" DockPanel.Dock="Right" Width="34" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <Slider x:Name="StepSlider" Minimum="5" Maximum="45" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center" ValueChanged="StepSlider_ValueChanged" Focusable="False"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Caption}" Text="Tip: arrow keys move the camera too. Hold a button to keep moving." Margin="0,0,0,20"/>
+
+                        <!-- Presets -->
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="PRESETS"/>
+                        <TextBlock x:Name="NoPresetsText" Text="No saved positions" Foreground="{StaticResource Secondary}" Margin="0,0,0,6"/>
+                        <ItemsControl x:Name="PresetList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,0,0,2">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Click="DeletePreset_Click" ToolTip="Delete preset"
+                                                Foreground="{StaticResource Secondary}">
+                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE74D;" FontSize="13"/>
+                                        </Button>
+                                        <Button Style="{StaticResource LinkButton}" Click="GotoPreset_Click" ToolTip="Go to this position">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE81D;" FontSize="13" Foreground="{StaticResource Accent}" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <DockPanel Margin="0,6,0,20">
+                            <Button x:Name="SavePresetButton" DockPanel.Dock="Right" Content="Save" Margin="6,0,0,0" Click="SavePreset_Click"/>
+                            <Grid>
+                                <TextBox x:Name="PresetName" TextChanged="PresetName_TextChanged" KeyDown="PresetName_KeyDown"/>
+                                <TextBlock x:Name="PresetPlaceholder" Text="Save current view as…" Foreground="{StaticResource Secondary}"
+                                           Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                            </Grid>
+                        </DockPanel>
+
+                        <!-- Camera toggles -->
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="CAMERA"/>
+                        <StackPanel x:Name="CameraSection" Margin="0,0,0,20">
+                            <CheckBox x:Name="PrivacySwitch" Style="{StaticResource Switch}" Click="Privacy_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xED1A;" Width="24"/>
+                                    <TextBlock Text="Privacy mode"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <CheckBox x:Name="LedSwitch" Style="{StaticResource Switch}" Click="Led_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xEA80;" Width="24"/>
+                                    <TextBlock Text="Status LED"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <CheckBox x:Name="MotionSwitch" Style="{StaticResource Switch}" Click="Motion_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE805;" Width="24"/>
+                                    <TextBlock Text="Motion detection"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <CheckBox x:Name="FlipSwitch" Style="{StaticResource Switch}" Click="Flip_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE8AB;" Width="24"/>
+                                    <TextBlock Text="Flip image"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <DockPanel x:Name="NightVisionRow" Margin="0,4,0,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE708;" Width="24"/>
+                                    <TextBlock Text="Night vision"/>
+                                </StackPanel>
+                                <Border Background="{StaticResource Field}" CornerRadius="7" HorizontalAlignment="Right">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton x:Name="NightAuto" Style="{StaticResource Segment}" Content="Auto" GroupName="Night" Tag="auto" Click="NightVision_Click"/>
+                                        <RadioButton x:Name="NightOn" Style="{StaticResource Segment}" Content="On" GroupName="Night" Tag="on" Click="NightVision_Click"/>
+                                        <RadioButton x:Name="NightOff" Style="{StaticResource Segment}" Content="Off" GroupName="Night" Tag="off" Click="NightVision_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </DockPanel>
+                        </StackPanel>
+
+                        <!-- Actions -->
+                        <TextBlock Style="{StaticResource SectionTitle}" Text="ACTIONS"/>
+                        <StackPanel x:Name="ActionsSection" Margin="0,0,0,16">
+                            <Button x:Name="SirenButton" Style="{StaticResource AccentButton}" Click="Siren_Click" Padding="10,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="SirenIcon" Style="{StaticResource Icon}" Text="&#xEA8F;" Foreground="White"/>
+                                    <TextBlock x:Name="SirenText" Text="Sound siren" Foreground="White" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <Button Click="Calibrate_Click" ToolTip="Re-centre the pan/tilt motors">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE81D;"/>
+                                        <TextBlock Text="Calibrate" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Click="Reboot_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE7E8;"/>
+                                        <TextBlock Text="Reboot" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <Button Click="RefreshStatus_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE72C;"/>
+                                    <TextBlock Text="Refresh status" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <TextBox x:Name="InfoText" Style="{x:Null}" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                 Foreground="{StaticResource Secondary}" FontSize="11.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

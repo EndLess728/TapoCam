@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Lets the project compile on macOS/Linux too (CI still builds the release on Windows). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>TapoCam</AssemblyName>
+    <RootNamespace>TapoCam</RootNamespace>
+    <ApplicationIcon>Assets\TapoCam.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>TapoCam</Product>
+    <Company>EndLess728</Company>
+    <Description>Watch and control TP-Link Tapo cameras over local Wi-Fi.</Description>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF leaves System.IO out of implicit usings. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\TapoCam.ico" />
+    <!-- Same pytapo bridge the macOS app uses. -->
+    <Content Include="..\..\..\shared\tapo_helper.py" Link="tapo_helper.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,11 +1,11 @@
 #!/bin/bash
 # Builds the Android TV app and installs it on a TV over adb.
-#   ./scripts/install_tv.sh 192.168.0.124
+#   ./scripts/install-tv.sh 192.168.0.124
 # Optionally push the camera login so you don't have to type it with the remote:
-#   ./scripts/install_tv.sh 192.168.0.124 192.168.0.108 <camera-account-user> <camera-account-password>
+#   ./scripts/install-tv.sh 192.168.0.124 192.168.0.108 <camera-account-user> <camera-account-password>
 set -euo pipefail
-cd "$(dirname "$0")/../android"
-TV="${1:?usage: install_tv.sh <tv-ip> [camera-ip user password]}"
+cd "$(dirname "$0")/.."
+TV="${1:?usage: install-tv.sh <tv-ip> [camera-ip user password]}"
 [[ "$TV" == *:* ]] || TV="$TV:5555"
 
 ./gradlew assembleRelease -q

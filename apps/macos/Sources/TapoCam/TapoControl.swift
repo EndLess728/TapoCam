@@ -143,9 +143,9 @@ final class TapoControl: ObservableObject {
 
     private var helperScript: String? {
         if let url = Bundle.main.url(forResource: "tapo_helper", withExtension: "py") { return url.path }
-        // Running via `swift run`: use the copy in the source tree.
+        // Running via `swift run`: use the shared copy in the repo.
         let dev = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appendingPathComponent("../../Resources/tapo_helper.py").standardized.path
+            .appendingPathComponent("../../../../shared/tapo_helper.py").standardized.path
         return FileManager.default.fileExists(atPath: dev) ? dev : nil
     }
 
