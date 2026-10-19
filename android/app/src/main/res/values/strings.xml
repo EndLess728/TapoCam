@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">TapoCam</string>
+    <string name="connecting">Connecting to camera at %1$s…</string>
+    <string name="retrying">Retrying…</string>
+    <string name="stream_ended">The stream stopped.</string>
+    <string name="err_auth">Wrong camera account username or password.\nPress OK → Camera settings to fix it.</string>
+    <string name="err_unreachable">Can\'t reach the camera at %1$s.\nCheck it\'s powered on and on the same Wi-Fi.</string>
+    <string name="controls_not_ready">Camera controls are still connecting…</string>
+    <string name="hint">◀ ▲ ▼ ▶  Hold to pan / tilt     OK  Menu &amp; presets     BACK  Exit</string>
+    <string name="presets">Presets</string>
+    <string name="no_presets">No saved positions yet</string>
+    <string name="moving_to">Moving to %1$s</string>
+    <string name="save_preset">＋  Save current position</string>
+    <string name="preset_name_hint">Name, e.g. Front door</string>
+    <string name="save">Save</string>
+    <string name="saved_preset">Saved \"%1$s\"</string>
+    <string name="delete_preset">Delete preset \"%1$s\"?</string>
+    <string name="delete">Delete</string>
+    <string name="view">View</string>
+    <string name="quality_hd">Quality: HD</string>
+    <string name="quality_sd">Quality: SD (faster)</string>
+    <string name="sound_on">Sound: On</string>
+    <string name="sound_off">Sound: Off</string>
+    <string name="reconnect">Reconnect</string>
+    <string name="settings">Camera settings</string>
+    <string name="settings_title">Camera settings</string>
+    <string name="camera_ip">Camera IP address</string>
+    <string name="find">Find camera</string>
+    <string name="searching">Searching your network…</string>
+    <string name="none_found">No camera found. Type its IP address.</string>
+    <string name="found_cameras">Found: %1$s</string>
+    <string name="account_help">Use the Camera Account from the Tapo app:\nCamera → ⚙ → Advanced Settings → Camera Account</string>
+    <string name="username">Camera account username</string>
+    <string name="password">Camera account password</string>
+    <string name="save_connect">Save &amp; connect</string>
+    <string name="fill_all">Fill in all three fields.</string>
+</resources>

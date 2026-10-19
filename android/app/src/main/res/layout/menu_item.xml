@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Button xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/menu_item_bg"
+    android:focusable="true"
+    android:gravity="start|center_vertical"
+    android:minHeight="44dp"
+    android:paddingHorizontal="16dp"
+    android:stateListAnimator="@null"
+    android:textAllCaps="false"
+    android:textColor="@android:color/white"
+    android:textSize="16sp" />

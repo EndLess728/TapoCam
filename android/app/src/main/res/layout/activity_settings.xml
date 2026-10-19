@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingVertical="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_title"
+            android:textColor="@android:color/white"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/host"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/camera_ip"
+                android:inputType="text"
+                android:imeOptions="actionNext"
+                android:textColor="@android:color/white"
+                android:textColorHint="#88FFFFFF" />
+
+            <Button
+                android:id="@+id/find"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/find"
+                android:background="@drawable/menu_item_bg"
+                android:paddingHorizontal="20dp"
+                android:stateListAnimator="@null"
+                android:textColor="@android:color/white"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/found"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#BBFFFFFF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/account_help"
+            android:textColor="#BBFFFFFF"
+            android:textSize="14sp" />
+
+        <EditText
+            android:id="@+id/user"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/username"
+            android:imeOptions="actionNext"
+            android:inputType="text"
+            android:textColor="@android:color/white"
+            android:textColorHint="#88FFFFFF" />
+
+        <EditText
+            android:id="@+id/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/password"
+            android:imeOptions="actionDone"
+            android:inputType="textPassword"
+            android:textColor="@android:color/white"
+            android:textColorHint="#88FFFFFF" />
+
+        <Button
+            android:id="@+id/save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/save_connect"
+            android:background="@drawable/menu_item_bg"
+                android:paddingHorizontal="20dp"
+                android:stateListAnimator="@null"
+                android:textColor="@android:color/white"
+                android:textAllCaps="false" />
+    </LinearLayout>
+</ScrollView>
