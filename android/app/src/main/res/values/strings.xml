@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">TapoCam</string>
     <string name="connecting">Connecting to camera at %1$s…</string>
-    <string name="retrying">Retrying…</string>
+    <string name="retrying_in">Retrying in %1$d s…  (OK → Reconnect to retry now)</string>
     <string name="stream_ended">The stream stopped.</string>
-    <string name="err_auth">Wrong camera account username or password.\nPress OK → Camera settings to fix it.</string>
+    <string name="err_auth">The camera refused the login.\nCheck the Camera Account in OK → Camera settings.\nAfter several wrong attempts the camera also blocks this TV for a while.</string>
     <string name="err_unreachable">Can\'t reach the camera at %1$s.\nCheck it\'s powered on and on the same Wi-Fi.</string>
     <string name="controls_not_ready">Camera controls are still connecting…</string>
     <string name="hint">◀ ▲ ▼ ▶  Hold to pan / tilt     OK  Menu &amp; presets     BACK  Exit</string>

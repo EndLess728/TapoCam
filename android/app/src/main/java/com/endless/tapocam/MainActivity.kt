@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var onvif: Onvif? = null
     private var presets: List<Preset> = emptyList()
     private var controlError: String? = null
+    private var failures = 0
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     // One thread keeps camera commands in order (move → stop).
@@ -103,6 +104,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun connect() {
+        failures = 0
         startStream()
         connectControls()
         showHint()
@@ -127,12 +129,15 @@ class MainActivity : AppCompatActivity() {
         p.setMediaSource(source)
         p.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) hideStatus()
+                if (state == Player.STATE_READY) {
+                    failures = 0
+                    hideStatus()
+                }
                 if (state == Player.STATE_ENDED) scheduleRetry(getString(R.string.stream_ended))
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                scheduleRetry(explain(error))
+                scheduleRetry(explain(error), isAuthError(error))
             }
         })
         p.playWhenReady = true
@@ -141,16 +146,25 @@ class MainActivity : AppCompatActivity() {
         player = p
     }
 
-    private fun scheduleRetry(message: String) {
-        showStatus("$message\n\n${getString(R.string.retrying)}", busy = false)
+    /**
+     * Tapo cameras block an IP for a while after repeated failed logins — and keep blocking while the
+     * attempts continue — so auth failures wait a minute and other failures back off gradually.
+     */
+    private fun scheduleRetry(message: String, authError: Boolean = false) {
+        failures++
+        val delaySec = if (authError) 60 else minOf(3 shl minOf(failures - 1, 4), 30)
+        showStatus("$message\n\n${getString(R.string.retrying_in, delaySec)}", busy = false)
         playerView.removeCallbacks(retry)
-        playerView.postDelayed(retry, 3000)
+        playerView.postDelayed(retry, delaySec * 1000L)
     }
+
+    private fun isAuthError(e: PlaybackException) =
+        generateSequence(e as Throwable) { it.cause }.any { "401" in (it.message ?: "") || "Unauthorized" in (it.message ?: "") }
 
     private fun explain(e: PlaybackException): String {
         val text = generateSequence(e as Throwable) { it.cause }.joinToString(" ") { it.message ?: "" }
         return when {
-            "401" in text || "Unauthorized" in text -> getString(R.string.err_auth)
+            isAuthError(e) -> getString(R.string.err_auth)
             e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                 e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
                 "timed out" in text || "ECONNREFUSED" in text || "EHOSTUNREACH" in text -> getString(R.string.err_unreachable, prefs.host)

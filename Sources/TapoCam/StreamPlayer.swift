@@ -87,9 +87,12 @@ final class StreamPlayer: ObservableObject {
         p.terminationHandler = { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == gen else { return }
-                self.state = .failed(Self.explain(errLog.text))
+                let log = errLog.text
+                self.state = .failed(Self.explain(log))
+                // Tapo blocks an IP after repeated failed logins, so don't hammer it with a bad password.
+                let authFailed = log.contains("401") || log.lowercased().contains("unauthorized")
                 self.retryTask = Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(3))
+                    try? await Task.sleep(for: .seconds(authFailed ? 60 : 3))
                     guard !Task.isCancelled, let self, self.generation == gen else { return }
                     self.state = .connecting
                     self.start()
@@ -107,7 +110,7 @@ final class StreamPlayer: ObservableObject {
     private static func explain(_ log: String) -> String {
         let l = log.lowercased()
         if l.contains("401") || l.contains("unauthorized") {
-            return "Wrong camera account username or password (Tapo app → Camera Settings → Advanced Settings → Camera Account)."
+            return "The camera refused the login. Check the Camera Account (Tapo app → Camera Settings → Advanced Settings → Camera Account). Retrying in 60 s…"
         }
         if l.contains("connection refused") || l.contains("timed out") || l.contains("no route") || l.contains("host is down") {
             return "Can't reach the camera. Check its IP address and that it's on the same Wi-Fi. Retrying…"
