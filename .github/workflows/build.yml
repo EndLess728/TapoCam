@@ -4,7 +4,10 @@ name: Build
 #   macOS       apps/macos    universal .app → DMG + ZIP
 #   Android TV  apps/android  release APK (installable, signed with the debug key)
 #   Windows     apps/windows  self-contained x64 build → installer + portable ZIP
-# Pushing a v* tag also publishes a GitHub Release with all of them attached and a changelog.
+# A GitHub Release with all of them attached and a changelog is published when either:
+#   - a v* tag is pushed, or
+#   - the workflow is run manually (Actions → Build → Run workflow) with "release" ticked;
+#     it then creates the v<version> tag on that commit itself.
 
 on:
   push:
@@ -12,6 +15,15 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a GitHub Release with the builds and changelog
+        type: boolean
+        default: false
+      version:
+        description: Release version without the v (e.g. 1.0.0)
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -26,9 +38,19 @@ jobs:
       version: ${{ steps.v.outputs.version }}
     steps:
       - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE: ${{ inputs.release }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT" == "workflow_dispatch" && "$RELEASE" == "true" ]]; then
+            if [[ ! "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
+              echo "::error::Set a version like 1.0.0 when releasing (got '$INPUT_VERSION')"
+              exit 1
+            fi
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           else
             echo "version=0.0.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
@@ -131,11 +153,12 @@ jobs:
           path: apps/windows/out/*
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
     needs: [version, macos, android-tv, windows]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      TAG: v${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,10 +170,11 @@ jobs:
           merge-multiple: true
 
       # Changelog = commits since the previous tag, grouped by Conventional Commit type.
+      # Uses the commit SHA (not the tag) so it also works on a manual run, before the tag exists.
       - name: Write release notes
         run: |
-          PREV=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
-          RANGE=${PREV:+$PREV..}$GITHUB_REF_NAME
+          PREV=$(git describe --tags --abbrev=0 "$GITHUB_SHA^" 2>/dev/null || true)
+          RANGE=${PREV:+$PREV..}$GITHUB_SHA
           section() {  # section <title> <grep -E pattern on the subject>
             local lines
             lines=$(git log --no-merges --pretty='%s (%h)' "$RANGE" | grep -E "$2" || true)
@@ -186,9 +210,9 @@ jobs:
             OTHER=$(git log --no-merges --pretty='- %s (%h)' "$RANGE" | grep -vE '^- (feat|fix|chore|ci|docs|refactor|perf|build|style|test)(\(|:|!)' || true)
             if [[ -n "$OTHER" ]]; then echo "### Misc"; echo; echo "$OTHER"; echo; fi
             if [[ -n "$PREV" ]]; then
-              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$PREV...$GITHUB_REF_NAME"
+              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$PREV...$TAG"
             else
-              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME"
+              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/commits/$TAG"
             fi
           } > notes.md
           cat notes.md
@@ -198,6 +222,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/* \
+          # --target creates the tag on this commit when it doesn't exist yet (manual run).
+          gh release create "$TAG" out/* \
+            --target "$GITHUB_SHA" \
             --title "TapoCam $VERSION" \
             --notes-file notes.md
